@@ -29,13 +29,15 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'django.contrib.contenttypes',
+    'django.contrib.auth',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
     'rpc',
+    'voice_control',
 ]
 
 MIDDLEWARE = [
@@ -44,7 +46,6 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     
@@ -78,6 +79,11 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD',''),
         'HOST': os.getenv('DB_HOST','localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
+        # Reutiliza la conexión entre requests en vez de abrir una nueva cada vez.
+        # Sin esto, cada llamada RPC paga el handshake TCP+TLS+auth completo hacia
+        # el Session Pooler de Supabase (en otra región), que es la causa principal
+        # de la lentitud general percibida.
+        'CONN_MAX_AGE': 60,
         'OPTIONS': {
             'sslmode': 'require',
         },
@@ -115,12 +121,18 @@ REST_FRAMEWORK = {
 # 
 _cors_origins = os.getenv('CORS_ALLOWED_ORIGINS','')
 if _cors_origins:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',')]
+else:
     CORS_ALLOWED_ORIGINS = [
         'http://localhost:3000',   # React / Next.js dev server
         'http://localhost:5173',   # Vite dev server
+        'http://localhost:5174',   # Vite dev server (puerto alterno)
+        'http://localhost:5175',   # Vite dev server (puerto alterno)
         'http://localhost:4200',   # Angular dev server
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:5175',
     ]
 
 # Solo permite el header Authorizado y Content-Type
@@ -131,6 +143,7 @@ CORS_ALLOW_HEADERS = [
 
 # Solo métodos que usa la API
 CORS_ALLOW_METHODS =[
+    'GET',
     'POST',
     'OPTIONS',
 ]
@@ -151,4 +164,4 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-LOGIN_SP_NAME = os.getenv('LOGIN_SP_NAME', 'sp_usuario_login')
+LOGIN_SP_NAME = os.getenv('LOGIN_SP_NAME', 'sp_login')

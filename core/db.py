@@ -1,5 +1,8 @@
 import json
+from django.core.cache import cache
 from django.db import connection, transaction
+
+SP_REGISTRY_CACHE_TTL = 60  # segundos
 
 
 def call_dispatcher(sp_nombre: str, params: list, rol: str | None = None) -> dict:
@@ -29,9 +32,20 @@ def call_dispatcher(sp_nombre: str, params: list, rol: str | None = None) -> dic
 
 
 def get_sp(sp_id: int) -> dict | None:
-    """Consulta el registry a través del dispatcher (única función con GRANT)."""
+    """
+    Consulta el registry a través del dispatcher (única función con GRANT).
+    Cacheado en memoria: el registry casi nunca cambia y consultarlo en cada
+    request duplica la latencia de red hacia la base de datos.
+    """
+    cache_key = f'sp_registry:{sp_id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     data = call_dispatcher('sp_registry_obtener', [sp_id]).get('data', [])
     if not data:
         return None
     r = data[0]
-    return {'name': r['name'], 'is_active': r['is_active'], 'is_public': r['is_public']}
+    sp = {'name': r['name'], 'is_active': r['is_active'], 'is_public': r['is_public']}
+    cache.set(cache_key, sp, SP_REGISTRY_CACHE_TTL)
+    return sp

@@ -1,5 +1,6 @@
 from django.urls import path, include
 
 urlpatterns = [
-    path('rpc/', include('rpc.urls')),
+    path('api/rpc/', include('rpc.urls')),
+    path('api/voice/', include('voice_control.urls')),
 ]
