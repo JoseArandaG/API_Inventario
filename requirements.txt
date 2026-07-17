@@ -4,3 +4,4 @@ django-cors-headers~=4.9
 psycopg[binary]~=3.2
 python-dotenv~=1.2
 PyJWT~=2.10
+gunicorn
